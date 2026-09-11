@@ -57,6 +57,9 @@
               proto = ./nix/apps/proto.nix;
             } "Run all code generation";
             test = mkApp ./nix/apps/test.nix { } "Run unit tests";
+            test-integration =
+              mkApp ./nix/apps/test-integration.nix { }
+                "Run acceptance tests against a real NeoShowcase environment";
             terraform-validate =
               mkApp ./nix/apps/terraform-validate.nix { }
                 "Validate Terraform fixtures with the development provider";

@@ -8,7 +8,7 @@ buildGo125Module {
   version = "0.0.0-dev";
   inherit src;
 
-  vendorHash = "sha256-xCtiW9VB3DJRcJ3lea76cSsc1o0axkJZebxZVzyvNQ0=";
+  vendorHash = "sha256-K6nSQycD6Ii3KwEuOIPwYwMwxEqZJeQ90fnpl44Gvoo=";
   subPackages = [ "." ];
   ldflags = [
     "-s"

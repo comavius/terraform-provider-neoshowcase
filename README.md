@@ -64,6 +64,7 @@ nix flake check
 nix run .#fmt
 nix run .#lint
 nix run .#terraform-validate
+nix run .#test-integration
 ```
 
 `terraform-validate` loads the locally built provider through a development
@@ -77,6 +78,7 @@ nix run .#fmt
 nix run .#proto
 nix run .#generate
 nix run .#test
+nix run .#test-integration
 nix run .#terraform-validate
 nix run .#tidy
 nix run .#lint
@@ -84,6 +86,12 @@ nix run .#check-generated
 nix run .#update-proto -- <upstream-commit>
 nix run .#verify
 ```
+
+`test-integration` checks the provider against the pinned upstream NeoShowcase
+gateway, controller, MariaDB, and a disposable Gitea instance. It requires a
+running Docker daemon, builds the upstream services, and removes its containers,
+volumes, and networks when the test finishes. Set `NEOSHOWCASE_SOURCE` to an
+existing NeoShowcase checkout to avoid fetching the repository again.
 
 The protobuf API schema is pinned to the upstream revision documented in
 [`proto/UPSTREAM.md`](proto/UPSTREAM.md). Generated files under

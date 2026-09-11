@@ -1,0 +1,64 @@
+services:
+  ns-gateway:
+    environment:
+      SSL_CERT_FILE: /test-certs/gitea.crt
+    ports:
+      - "127.0.0.1::8080"
+    volumes:
+      - "${NEOSHOWCASE_TEST_CERTS}:/test-certs:ro"
+      - "${NEOSHOWCASE_TEST_CERTS}/known_hosts:/root/.ssh/known_hosts:ro"
+
+  ns-controller:
+    environment:
+      SSL_CERT_FILE: /test-certs/gitea.crt
+    ports: !override []
+    volumes:
+      - "${NEOSHOWCASE_TEST_CERTS}:/test-certs:ro"
+      - "${NEOSHOWCASE_TEST_CERTS}/known_hosts:/root/.ssh/known_hosts:ro"
+
+  mysql:
+    ports: !override []
+    volumes: !override
+      - mysql-data:/var/lib/mysql
+
+  gitea:
+    image: gitea/gitea:1.24.7@sha256:918955f16b1e91732af6c449bb2db3a34271748dbed1ccfbae48f8a2fb5480b8
+    restart: unless-stopped
+    environment:
+      GITEA__database__DB_TYPE: sqlite3
+      GITEA__database__PATH: /data/gitea/gitea.db
+      GITEA__security__INSTALL_LOCK: "true"
+      GITEA__server__DOMAIN: gitea
+      GITEA__server__ROOT_URL: https://gitea:3000/
+      GITEA__server__PROTOCOL: https
+      GITEA__server__HTTP_PORT: "3000"
+      GITEA__server__CERT_FILE: /test-certs/gitea.crt
+      GITEA__server__KEY_FILE: /test-certs/gitea.key
+      GITEA__server__DISABLE_SSH: "false"
+      GITEA__server__START_SSH_SERVER: "true"
+      GITEA__server__SSH_DOMAIN: gitea
+      GITEA__server__SSH_PORT: "2222"
+      GITEA__server__SSH_LISTEN_PORT: "2222"
+      GITEA__service__DISABLE_REGISTRATION: "true"
+    volumes:
+      - gitea-data:/data
+      - "${NEOSHOWCASE_TEST_CERTS}:/test-certs:ro"
+    ports:
+      - "127.0.0.1::3000"
+      - "127.0.0.1::2222"
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-check-certificate --spider --quiet https://127.0.0.1:3000/api/healthz || exit 1"]
+      interval: 1s
+      timeout: 5s
+      retries: 60
+    networks:
+      - default
+      - apps
+
+networks:
+  apps:
+    name: "${COMPOSE_PROJECT_NAME}_apps"
+
+volumes:
+  gitea-data:
+  mysql-data:

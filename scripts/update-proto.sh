@@ -2,11 +2,14 @@
 set -euo pipefail
 
 readonly upstream_repository="https://raw.githubusercontent.com/traPtitech/NeoShowcase"
-readonly upstream_commit="${1:-16eda27a8cda8858811406411bcc7f2f508e9efc}"
 script_directory="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly script_directory
 repository_root="$(cd -- "${script_directory}/.." && pwd)"
 readonly repository_root
+revision_file="${repository_root}/proto/upstream-revision"
+readonly revision_file
+upstream_commit="${1:-$(tr -d '[:space:]' <"${revision_file}")}"
+readonly upstream_commit
 readonly destination="${repository_root}/proto/neoshowcase/protobuf"
 temporary_directory="$(mktemp -d)"
 readonly temporary_directory
@@ -24,6 +27,7 @@ done
 
 install -m 0644 "${temporary_directory}/gateway.proto" "${destination}/gateway.proto"
 install -m 0644 "${temporary_directory}/null.proto" "${destination}/null.proto"
+printf '%s\n' "${upstream_commit}" >"${revision_file}"
 
 printf 'Updated protobuf sources to NeoShowcase commit %s.\n' "${upstream_commit}"
-printf 'Update proto/UPSTREAM.md, then run nix run .#proto.\n'
+printf 'Run nix run .#proto to regenerate the Go bindings.\n'
