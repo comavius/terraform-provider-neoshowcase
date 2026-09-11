@@ -1,0 +1,651 @@
+syntax = "proto3";
+package neoshowcase.protobuf;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "neoshowcase/protobuf/null.proto";
+
+// ---- Basic structs ----
+
+// -- System
+
+message SSHInfo {
+  string host = 1;
+  int32 port = 2;
+}
+
+message AvailableDomain {
+  string domain = 1;
+  repeated string exclude_domains = 2;
+  bool auth_available = 3;
+  // already_bound ドメインが他のアプリケーションによって専有されているか
+  bool already_bound = 4;
+}
+
+message AvailablePort {
+  int32 start_port = 1;
+  int32 end_port = 2;
+  PortPublicationProtocol protocol = 3;
+}
+
+message AdditionalLink {
+  string name = 1;
+  string url = 2;
+}
+
+message SystemInfo {
+  // public_key システムのSSH公開鍵 リポジトリごとにSSH秘密鍵を設定しないデフォルトSSH認証で使用
+  string public_key = 1;
+  // ssh アプリケーションにSSH接続するための情報
+  SSHInfo ssh = 2;
+  // domains 使用可能なドメイン一覧
+  repeated AvailableDomain domains = 3;
+  // ports 使用可能なポート一覧
+  repeated AvailablePort ports = 4;
+  // additional_links UIメニューに表示するリンク一覧
+  repeated AdditionalLink additional_links = 5;
+  // version NeoShowcase version
+  string version = 6;
+  // revision NeoShowcase version
+  string revision = 7;
+}
+
+// -- User
+
+message User {
+  string id = 1;
+  string name = 2;
+  bool admin = 3;
+  string avatar_url = 4;
+}
+
+message UserKey {
+  string id = 1;
+  string user_id = 2;
+  string public_key = 3;
+  string name = 4;
+  google.protobuf.Timestamp created_at = 5;
+}
+
+// -- Repository
+
+message Repository {
+  enum AuthMethod {
+    NONE = 0;
+    BASIC = 1;
+    SSH = 2;
+  }
+  string id = 1;
+  string name = 2;
+  string url = 3;
+  string html_url = 4;
+  AuthMethod auth_method = 5;
+  repeated string owner_ids = 6;
+}
+
+message SimpleCommit {
+  string hash = 1;
+  string author_name = 2;
+  google.protobuf.Timestamp commit_date = 3;
+  string message = 4;
+}
+
+// -- Application
+
+enum DeployType {
+  RUNTIME = 0;
+  STATIC = 1;
+}
+
+message AutoShutdownConfig {
+  enum StartupBehavior {
+    UNDEFINED = 0;
+    LOADING_PAGE = 1;
+    BLOCKING = 2;
+  }
+  bool enabled = 1;
+  StartupBehavior startup = 2;
+}
+
+message RuntimeConfig {
+  bool use_mariadb = 1;
+  bool use_mongodb = 2;
+  string entrypoint = 3;
+  string command = 4;
+  AutoShutdownConfig auto_shutdown = 5;
+}
+
+message BuildConfigRuntimeBuildpack {
+  RuntimeConfig runtime_config = 1;
+  string context = 2;
+}
+
+message BuildConfigRuntimeCmd {
+  RuntimeConfig runtime_config = 1;
+  string base_image = 2;
+  string build_cmd = 3;
+}
+
+message BuildConfigRuntimeDockerfile {
+  RuntimeConfig runtime_config = 1;
+  string dockerfile_name = 2;
+  string context = 3;
+}
+
+message StaticConfig {
+  string artifact_path = 1;
+  bool spa = 2;
+}
+
+message BuildConfigStaticBuildpack {
+  StaticConfig static_config = 1;
+  string context = 2;
+}
+
+message BuildConfigStaticCmd {
+  StaticConfig static_config = 1;
+  string base_image = 2;
+  string build_cmd = 3;
+}
+
+message BuildConfigStaticDockerfile {
+  StaticConfig static_config = 1;
+  string dockerfile_name = 2;
+  string context = 3;
+}
+
+message ApplicationConfig {
+  oneof build_config {
+    BuildConfigRuntimeBuildpack runtime_buildpack = 1;
+    BuildConfigRuntimeCmd runtime_cmd = 2;
+    BuildConfigRuntimeDockerfile runtime_dockerfile = 3;
+    BuildConfigStaticBuildpack static_buildpack = 4;
+    BuildConfigStaticCmd static_cmd = 5;
+    BuildConfigStaticDockerfile static_dockerfile = 6;
+  }
+}
+
+enum AuthenticationType {
+  OFF = 0;
+  SOFT = 1;
+  HARD = 2;
+}
+
+message Website {
+  string id = 1;
+  string fqdn = 2;
+  string path_prefix = 3;
+  bool strip_prefix = 4;
+  bool https = 5;
+  bool h2c = 6;
+  int32 http_port = 7;
+  AuthenticationType authentication = 8;
+}
+
+enum PortPublicationProtocol {
+  TCP = 0;
+  UDP = 1;
+}
+
+message PortPublication {
+  int32 internet_port = 1;
+  int32 application_port = 2;
+  PortPublicationProtocol protocol = 3;
+}
+
+message Application {
+  enum ContainerState {
+    MISSING = 0;
+    STARTING = 1;
+    RESTARTING = 2;
+    RUNNING = 3;
+    EXITED = 4;
+    ERRORED = 5;
+    UNKNOWN = 6;
+  }
+  string id = 1;
+  string name = 2;
+  string repository_id = 3;
+  string ref_name = 4;
+  string commit = 5;
+  DeployType deploy_type = 6;
+  bool running = 7;
+  ContainerState container = 8;
+  string container_message = 9;
+  string current_build = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+  ApplicationConfig config = 13;
+  repeated Website websites = 14;
+  repeated PortPublication port_publications = 15;
+  repeated string owner_ids = 16;
+
+  optional BuildStatus latest_build_status = 17;
+}
+
+message ApplicationEnvVar {
+  string application_id = 1;
+  string key = 2;
+  string value = 3;
+  bool system = 4;
+}
+
+message ApplicationEnvVars {
+  repeated ApplicationEnvVar variables = 1;
+}
+
+message Artifact {
+  string id = 1;
+  string name = 2;
+  string build_id = 3;
+  int64 size = 4;
+  google.protobuf.Timestamp created_at = 5;
+  neoshowcase.protobuf.NullTimestamp deleted_at = 6;
+}
+
+message ArtifactContent {
+  string filename = 1;
+  bytes content = 2;
+}
+
+message RuntimeImage {
+  string id = 1;
+  string build_id = 2;
+  int64 size = 3;
+  google.protobuf.Timestamp created_at = 4;
+}
+
+message AvailableMetrics {
+  repeated string metrics_names = 1;
+}
+
+message ApplicationMetric {
+  google.protobuf.Timestamp time = 1;
+  double value = 2;
+}
+
+message ApplicationMetrics {
+  repeated ApplicationMetric metrics = 1;
+}
+
+message ApplicationOutput {
+  google.protobuf.Timestamp time = 1;
+  string log = 2;
+}
+
+message ApplicationOutputs {
+  repeated ApplicationOutput outputs = 1;
+}
+
+enum BuildStatus {
+  QUEUED = 0;
+  BUILDING = 1;
+  SUCCEEDED = 2;
+  FAILED = 3;
+  CANCELLED = 4;
+  SKIPPED = 5;
+}
+
+message Build {
+  string id = 1;
+  string application_id = 2;
+  string commit = 3;
+  BuildStatus status = 4;
+  google.protobuf.Timestamp queued_at = 5;
+  neoshowcase.protobuf.NullTimestamp started_at = 6;
+  neoshowcase.protobuf.NullTimestamp updated_at = 7;
+  neoshowcase.protobuf.NullTimestamp finished_at = 8;
+  bool retriable = 9;
+  repeated Artifact artifacts = 10;
+  optional RuntimeImage runtime_image = 11;
+}
+
+message BuildLog {
+  bytes log = 1;
+}
+
+message GitRef {
+  string ref_name = 1;
+  string commit = 2;
+}
+
+// ---- API requests / responses ----
+
+message GenerateKeyPairResponse {
+  string key_id = 1;
+  string public_key = 2;
+}
+
+message GetUsersResponse {
+  repeated User users = 1;
+}
+
+message GetUserKeysResponse {
+  repeated UserKey keys = 1;
+}
+
+message CreateUserKeyRequest {
+  string public_key = 1;
+  string name = 2;
+}
+
+message DeleteUserKeyRequest {
+  string key_id = 1;
+}
+
+message CreateRepositoryAuthBasic {
+  string username = 1;
+  string password = 2;
+}
+
+message CreateRepositoryAuthSSH {
+  string key_id = 1;
+}
+
+message CreateRepositoryAuth {
+  oneof auth {
+    google.protobuf.Empty none = 1;
+    CreateRepositoryAuthBasic basic = 2;
+    CreateRepositoryAuthSSH ssh = 3;
+  }
+}
+
+message CreateRepositoryRequest {
+  string name = 1;
+  string url = 2;
+  CreateRepositoryAuth auth = 3;
+}
+
+message GetRepositoriesRequest {
+  enum Scope {
+    MINE = 0;
+    CREATABLE = 1;
+    PUBLIC = 2;
+    // admin only
+    ALL = 3;
+  }
+  Scope scope = 1;
+}
+
+message UpdateRepositoryRequest {
+  string id = 1;
+  optional string name = 2;
+  optional string url = 3;
+  optional CreateRepositoryAuth auth = 4;
+  message UpdateOwners {
+    repeated string owner_ids = 1;
+  }
+  optional UpdateOwners owner_ids = 5;
+}
+
+message RepositoryIdRequest {
+  string repository_id = 1;
+}
+
+message GetRepositoryCommitsRequest {
+  repeated string hashes = 1;
+}
+
+message GetRepositoryCommitsResponse {
+  repeated SimpleCommit commits = 1;
+}
+
+message CreateWebsiteRequest {
+  string fqdn = 1;
+  string path_prefix = 2;
+  bool strip_prefix = 3;
+  bool https = 4;
+  bool h2c = 5;
+  int32 http_port = 6;
+  AuthenticationType authentication = 7;
+}
+
+message DeleteWebsiteRequest {
+  string id = 1;
+}
+
+message CreateApplicationRequest {
+  string name = 1;
+  string repository_id = 2;
+  string ref_name = 3;
+  ApplicationConfig config = 4;
+  repeated CreateWebsiteRequest websites = 5;
+  repeated PortPublication port_publications = 6;
+  bool start_on_create = 7;
+}
+
+message GetApplicationsRequest {
+  enum Scope {
+    MINE = 0;
+    ALL = 1;
+    REPOSITORY = 2;
+  }
+  Scope scope = 1;
+  optional string repository_id = 2;
+}
+
+message UpdateApplicationRequest {
+  string id = 1;
+  optional string name = 2;
+
+  reserved 3; // 以前はrepository idとして使用してた
+
+  optional string ref_name = 4;
+  optional ApplicationConfig config = 5;
+  message UpdateWebsites {
+    repeated CreateWebsiteRequest websites = 1;
+  }
+  optional UpdateWebsites websites = 6;
+  message UpdatePorts {
+    repeated PortPublication port_publications = 1;
+  }
+  optional UpdatePorts port_publications = 7;
+  message UpdateOwners {
+    repeated string owner_ids = 1;
+  }
+  optional UpdateOwners owner_ids = 8;
+}
+
+message GetRepositoriesResponse {
+  repeated Repository repositories = 1;
+}
+
+message GetApplicationsResponse {
+  repeated Application applications = 1;
+}
+
+message ApplicationIdRequest {
+  string id = 1;
+}
+
+message GetAllBuildsRequest {
+  // zero-indexed page
+  int32 page = 1;
+  int32 limit = 2;
+}
+
+message BuildIdRequest {
+  string build_id = 1;
+}
+
+message ArtifactIdRequest {
+  string artifact_id = 1;
+}
+
+message GetBuildsResponse {
+  repeated Build builds = 1;
+}
+
+message SetApplicationEnvVarRequest {
+  string application_id = 1;
+  string key = 2;
+  string value = 3;
+}
+
+message DeleteApplicationEnvVarRequest {
+  string application_id = 1;
+  string key = 2;
+}
+
+message GetApplicationMetricsRequest {
+  string application_id = 1;
+  string metrics_name = 2;
+  google.protobuf.Timestamp before = 3;
+  int64 limit_seconds = 4;
+}
+
+message GetOutputRequest {
+  string application_id = 1;
+  google.protobuf.Timestamp before = 2;
+  int32 limit = 3;
+}
+
+message GetOutputStreamRequest {
+  string application_id = 1;
+  google.protobuf.Timestamp begin = 2;
+}
+
+message RetryCommitBuildRequest {
+  string application_id = 1;
+  string commit = 2;
+}
+
+message GetRepositoryRefsResponse {
+  repeated GitRef refs = 1;
+}
+
+service APIService {
+  // General / System
+
+  // GetSystemInfo システム固有情報を取得します
+  rpc GetSystemInfo(google.protobuf.Empty) returns (SystemInfo) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // GenerateKeyPair リポジトリ登録で使用する鍵ペアを一時的に生成します
+  rpc GenerateKeyPair(google.protobuf.Empty) returns (GenerateKeyPairResponse);
+
+  // User
+
+  // GetMe 自身の情報を取得します プロキシ認証のため常に成功します
+  rpc GetMe(google.protobuf.Empty) returns (User) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // GetUsers 全てのユーザーの情報を取得します
+  rpc GetUsers(google.protobuf.Empty) returns (GetUsersResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // CreateUserKey アプリコンテナSSH用の公開鍵を登録します
+  rpc CreateUserKey(CreateUserKeyRequest) returns (UserKey);
+  // GetUserKeys 登録した公開鍵一覧を取得します
+  rpc GetUserKeys(google.protobuf.Empty) returns (GetUserKeysResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // DeleteUserKey 登録した公開鍵を削除します
+  rpc DeleteUserKey(DeleteUserKeyRequest) returns (google.protobuf.Empty);
+
+  // Repository CRUD
+
+  // CreateRepository リポジトリを登録します
+  rpc CreateRepository(CreateRepositoryRequest) returns (Repository);
+  // GetRepositories リポジトリ一覧を取得します
+  rpc GetRepositories(GetRepositoriesRequest) returns (GetRepositoriesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // GetRepositoryCommits コミットのメタ情報を取得します
+  rpc GetRepositoryCommits(GetRepositoryCommitsRequest) returns (GetRepositoryCommitsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // GetRepository リポジトリを取得します
+  rpc GetRepository(RepositoryIdRequest) returns (Repository) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // GetRepositoryRefs リポジトリの現在の有効なref一覧を取得します
+  rpc GetRepositoryRefs(RepositoryIdRequest) returns (GetRepositoryRefsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // UpdateRepository リポジトリ情報を更新します
+  rpc UpdateRepository(UpdateRepositoryRequest) returns (google.protobuf.Empty);
+  // RefreshRepository 自動更新間隔を待たず、手動でリモートリポジトリの最新情報に追従させます
+  rpc RefreshRepository(RepositoryIdRequest) returns (google.protobuf.Empty);
+  // DeleteRepository リポジトリを削除します 関連する全てのアプリケーションの削除が必要です
+  rpc DeleteRepository(RepositoryIdRequest) returns (google.protobuf.Empty);
+
+  // Application CRUD
+
+  // CreateApplication アプリを作成します
+  rpc CreateApplication(CreateApplicationRequest) returns (Application);
+  // GetApplications アプリ一覧を取得します
+  rpc GetApplications(GetApplicationsRequest) returns (GetApplicationsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // GetApplication アプリを取得します
+  rpc GetApplication(ApplicationIdRequest) returns (Application) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // UpdateApplication アプリ情報を更新します
+  rpc UpdateApplication(UpdateApplicationRequest) returns (google.protobuf.Empty);
+  // DeleteApplication アプリを削除します 先にアプリのシャットダウンが必要です
+  rpc DeleteApplication(ApplicationIdRequest) returns (google.protobuf.Empty);
+
+  // Application info
+
+  // GetAvailableMetrics 取得可能メトリクス一覧を取得します
+  rpc GetAvailableMetrics(google.protobuf.Empty) returns (AvailableMetrics) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // GetApplicationMetrics アプリのメトリクスを取得します
+  rpc GetApplicationMetrics(GetApplicationMetricsRequest) returns (ApplicationMetrics) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // GetOutput アプリの出力を取得します
+  rpc GetOutput(GetOutputRequest) returns (ApplicationOutputs) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // GetOutputStream アプリの出力をストリーム形式で取得します
+  rpc GetOutputStream(GetOutputStreamRequest) returns (stream ApplicationOutput);
+
+  // Application config
+
+  // GetEnvVars アプリの環境変数を取得します
+  rpc GetEnvVars(ApplicationIdRequest) returns (ApplicationEnvVars) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // SetEnvVar アプリの環境変数をセットします システムによって設定された環境変数は上書きできません
+  rpc SetEnvVar(SetApplicationEnvVarRequest) returns (google.protobuf.Empty);
+  // DeleteEnvVar アプリの環境変数を削除します システムによって設定された環境変数は削除できません
+  rpc DeleteEnvVar(DeleteApplicationEnvVarRequest) returns (google.protobuf.Empty);
+  // StartApplication アプリを起動します 起動中の場合は再起動します
+  rpc StartApplication(ApplicationIdRequest) returns (google.protobuf.Empty);
+  // StopApplication アプリをシャットダウンします
+  rpc StopApplication(ApplicationIdRequest) returns (google.protobuf.Empty);
+
+  // Application builds
+
+  // GetAllBuilds すべてのアプリケーションのビルドキューを取得します
+  rpc GetAllBuilds(GetAllBuildsRequest) returns (GetBuildsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // GetBuilds アプリのビルド一覧を取得します
+  rpc GetBuilds(ApplicationIdRequest) returns (GetBuildsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // GetBuild アプリのビルド情報を取得します
+  rpc GetBuild(BuildIdRequest) returns (Build) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // RetryCommitBuild アプリの該当コミットのビルドをやり直します
+  rpc RetryCommitBuild(RetryCommitBuildRequest) returns (google.protobuf.Empty);
+  // CancelBuild 該当ビルドが進行中の場合キャンセルします
+  rpc CancelBuild(BuildIdRequest) returns (google.protobuf.Empty);
+  // GetBuildLog 終了したビルドのログを取得します
+  rpc GetBuildLog(BuildIdRequest) returns (BuildLog) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // GetBuildLogStream ビルド中のログをストリーム形式で取得します
+  rpc GetBuildLogStream(BuildIdRequest) returns (stream BuildLog);
+  // GetBuildArtifact 静的サイトアプリの場合ビルド成果物（静的ファイルのtar）を取得します
+  rpc GetBuildArtifact(ArtifactIdRequest) returns (ArtifactContent) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}
+

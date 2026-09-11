@@ -1,0 +1,10 @@
+syntax = "proto3";
+package neoshowcase.protobuf;
+
+import "google/protobuf/timestamp.proto";
+
+message NullTimestamp {
+  google.protobuf.Timestamp timestamp = 1;
+  bool valid = 2;
+}
+

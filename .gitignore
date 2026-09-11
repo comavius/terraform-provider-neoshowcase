@@ -1,0 +1,14 @@
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+terraform.tfvars
+
+# Go
+/terraform-provider-neoshowcase
+coverage.out
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store

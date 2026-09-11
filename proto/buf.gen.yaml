@@ -1,0 +1,15 @@
+# yaml-language-server: $schema=https://json.schemastore.org/buf.gen.json
+
+version: v2
+managed:
+  enabled: true
+  override:
+    - file_option: go_package
+      value: github.com/traP-jp/terraform-provider-neoshowcase/internal/neoshowcase/gen
+plugins:
+  - remote: buf.build/protocolbuffers/go:v1.36.11
+    out: ..
+    opt: module=github.com/traP-jp/terraform-provider-neoshowcase
+  - remote: buf.build/connectrpc/go:v1.19.1
+    out: ..
+    opt: module=github.com/traP-jp/terraform-provider-neoshowcase

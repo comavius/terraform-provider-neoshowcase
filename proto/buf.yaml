@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=https://json.schemastore.org/buf.json
+
+version: v2
+modules:
+  - path: .
+lint:
+  use:
+    - BASIC
+breaking:
+  use:
+    - FILE
