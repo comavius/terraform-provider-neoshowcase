@@ -28,13 +28,10 @@ func TestAdditional(t *testing.T) {
 func TestValidateAuthoritativeOwner(t *testing.T) {
 	t.Parallel()
 
-	if err := ValidateAuthoritativeOwner("provider", []string{"provider"}, false); err != nil {
+	if err := ValidateAuthoritativeOwner("provider", []string{"provider"}); err != nil {
 		t.Fatalf("owner should be accepted: %v", err)
 	}
-	if err := ValidateAuthoritativeOwner("provider", nil, true); err != nil {
-		t.Fatalf("admin should be accepted: %v", err)
-	}
-	if err := ValidateAuthoritativeOwner("provider", []string{"member"}, false); err == nil {
+	if err := ValidateAuthoritativeOwner("provider", []string{"member"}); err == nil {
 		t.Fatal("non-owner should be rejected")
 	}
 }

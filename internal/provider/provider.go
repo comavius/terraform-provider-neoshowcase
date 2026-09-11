@@ -9,6 +9,7 @@ import (
 
 	currentuserdatasource "github.com/traP-jp/terraform-provider-neoshowcase/internal/provider/datasource/currentuser"
 	systeminfodatasource "github.com/traP-jp/terraform-provider-neoshowcase/internal/provider/datasource/systeminfo"
+	repositoryresource "github.com/traP-jp/terraform-provider-neoshowcase/internal/provider/resource/repository"
 )
 
 const typeName = "neoshowcase"
@@ -31,9 +32,9 @@ func (p *neoShowcaseProvider) Metadata(_ context.Context, _ provider.MetadataReq
 }
 
 func (p *neoShowcaseProvider) Resources(_ context.Context) []func() resource.Resource {
-	// Resources are added here only once their complete CRUD lifecycle is
-	// implemented. See internal/provider/resource/README.md for the roadmap.
-	return nil
+	return []func() resource.Resource{
+		repositoryresource.New,
+	}
 }
 
 func (p *neoShowcaseProvider) DataSources(_ context.Context) []func() datasource.DataSource {

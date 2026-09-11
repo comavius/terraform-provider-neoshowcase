@@ -45,11 +45,11 @@ func Additional(authoritativeOwnerID string, effectiveOwnerIDs []string) []strin
 	return owners
 }
 
-func ValidateAuthoritativeOwner(authoritativeOwnerID string, effectiveOwnerIDs []string, admin bool) error {
+func ValidateAuthoritativeOwner(authoritativeOwnerID string, effectiveOwnerIDs []string) error {
 	if authoritativeOwnerID == "" {
 		return fmt.Errorf("authoritative owner ID must not be empty")
 	}
-	if slices.Contains(effectiveOwnerIDs, authoritativeOwnerID) || admin {
+	if slices.Contains(effectiveOwnerIDs, authoritativeOwnerID) {
 		return nil
 	}
 	return fmt.Errorf("provider user %q is not an owner; grant ownership before managing this resource", authoritativeOwnerID)

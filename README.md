@@ -4,10 +4,9 @@ This repository contains a Terraform provider for
 [NeoShowcase](https://github.com/traPtitech/NeoShowcase).
 
 > [!NOTE]
-> The provider is under active development. The currently registered data
-> sources are `neoshowcase_current_user` and `neoshowcase_system_info`.
-> Managed resources will be registered after their complete lifecycle and
-> acceptance tests are implemented.
+> The provider is under active development. The currently registered managed
+> resource is `neoshowcase_repository`; the registered data sources are
+> `neoshowcase_current_user` and `neoshowcase_system_info`.
 
 ## Requirements
 
@@ -53,9 +52,29 @@ The protobuf API schema is pinned to the upstream revision documented in
 [`proto/UPSTREAM.md`](proto/UPSTREAM.md). Generated files under
 `internal/neoshowcase/gen` must not be edited manually.
 
-## Planned managed resources
+## Managed resources
 
 - `neoshowcase_repository`
+
+### Repository ownership
+
+The user resolved by the provider's `user` setting is always included as the
+authoritative repository owner. `additional_owner_ids` is the exact set of
+other owners managed by Terraform; do not include the provider user in it.
+
+When changing the provider user, first grant the new user ownership outside
+this provider or include it as an additional owner in a preceding apply. The
+first refresh under the new identity intentionally fails if that user is not
+already an owner, preventing Terraform from locking itself out.
+
+Repository passwords use Terraform 1.11 write-only attributes and are never
+stored in state. Set `auth.password_wo` for BASIC authentication and increment
+`auth.password_wo_version` whenever the password should be sent again. Importing
+an existing BASIC repository requires supplying a password on the first change
+to its authentication settings because NeoShowcase does not return credentials.
+
+## Planned managed resources
+
 - `neoshowcase_application`
 - `neoshowcase_environment_variable`
 - `neoshowcase_user_key`
