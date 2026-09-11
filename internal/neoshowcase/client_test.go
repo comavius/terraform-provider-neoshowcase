@@ -164,6 +164,18 @@ func (s *testAPIService) CreateRepository(_ context.Context, request *connect.Re
 	return connect.NewResponse(s.repository), nil
 }
 
+func (s *testAPIService) GetRepositories(_ context.Context, request *connect.Request[gen.GetRepositoriesRequest]) (*connect.Response[gen.GetRepositoriesResponse], error) {
+	s.testing.Helper()
+	if got, want := request.Msg.GetScope(), gen.GetRepositoriesRequest_MINE; got != want {
+		s.testing.Errorf("repository scope = %s, want %s", got, want)
+	}
+	repositories := []*gen.Repository(nil)
+	if s.repository != nil {
+		repositories = append(repositories, s.repository)
+	}
+	return connect.NewResponse(&gen.GetRepositoriesResponse{Repositories: repositories}), nil
+}
+
 func (s *testAPIService) GetRepository(_ context.Context, request *connect.Request[gen.RepositoryIdRequest]) (*connect.Response[gen.Repository], error) {
 	s.testing.Helper()
 	if s.repository == nil || request.Msg.GetRepositoryId() != s.repository.GetId() {
@@ -271,6 +283,20 @@ func TestClientRepositoryLifecycle(t *testing.T) {
 	}
 	if got, want := created.GetId(), "repository-id"; got != want {
 		t.Fatalf("repository ID = %q, want %q", got, want)
+	}
+	found, err := client.GetOwnedRepositoryByURL(context.Background(), created.GetUrl())
+	if err != nil {
+		t.Fatalf("GetOwnedRepositoryByURL() error = %v", err)
+	}
+	if found.GetId() != created.GetId() {
+		t.Fatalf("found repository ID = %q, want %q", found.GetId(), created.GetId())
+	}
+	notFound, err := client.GetOwnedRepositoryByURL(context.Background(), "https://example.com/missing.git")
+	if err != nil {
+		t.Fatalf("GetOwnedRepositoryByURL() missing error = %v", err)
+	}
+	if notFound != nil {
+		t.Fatalf("GetOwnedRepositoryByURL() missing = %#v, want nil", notFound)
 	}
 
 	name := "renamed"

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"slices"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -44,15 +45,30 @@ func (r *repositoryResource) Create(ctx context.Context, request resource.Create
 		response.Diagnostics.AddAttributeError(path.Root("additional_owner_ids"), "Authoritative owner listed as an additional owner", "The provider user is added automatically and must not be included in additional_owner_ids.")
 		return
 	}
+	desiredOwners := ownership.Effective(authoritativeOwnerID, additionalOwnerIDs)
 
 	created, err := r.session.Client.CreateRepository(ctx, &gen.CreateRepositoryRequest{
 		Name: plan.Name.ValueString(),
 		Url:  plan.URL.ValueString(),
 		Auth: authRequest,
 	})
+	adopted := false
 	if err != nil {
-		response.Diagnostics.AddError("Unable to create NeoShowcase repository", err.Error())
-		return
+		existing, lookupErr := r.session.Client.GetOwnedRepositoryByURL(ctx, plan.URL.ValueString())
+		if lookupErr != nil {
+			response.Diagnostics.AddError("Unable to create NeoShowcase repository", fmt.Sprintf("%v; looking for an existing repository with the same URL: %v", err, lookupErr))
+			return
+		}
+		if existing == nil {
+			response.Diagnostics.AddError("Unable to create NeoShowcase repository", err.Error())
+			return
+		}
+		if ownerErr := ownership.ValidateAuthoritativeOwner(authoritativeOwnerID, existing.GetOwnerIds()); ownerErr != nil {
+			response.Diagnostics.AddError("Unable to adopt existing NeoShowcase repository", ownerErr.Error())
+			return
+		}
+		created = existing
+		adopted = true
 	}
 
 	// Persist the server-assigned ID before the follow-up owner update so a
@@ -64,7 +80,21 @@ func (r *repositoryResource) Create(ctx context.Context, request resource.Create
 		return
 	}
 
-	desiredOwners := ownership.Effective(authoritativeOwnerID, additionalOwnerIDs)
+	if adopted {
+		name := plan.Name.ValueString()
+		if err := r.session.Client.UpdateRepository(ctx, &gen.UpdateRepositoryRequest{
+			Id:       created.GetId(),
+			Name:     &name,
+			Auth:     authRequest,
+			OwnerIds: &gen.UpdateRepositoryRequest_UpdateOwners{OwnerIds: desiredOwners},
+		}); err != nil {
+			response.Diagnostics.AddError("Existing repository adopted but could not be updated", err.Error())
+			return
+		}
+		r.readAfterWrite(ctx, created.GetId(), plan.Auth, &response.State, &response.Diagnostics)
+		return
+	}
+
 	actualOwners := ownership.Effective("", created.GetOwnerIds())
 	if !slices.Equal(desiredOwners, actualOwners) {
 		if err := r.session.Client.UpdateRepository(ctx, &gen.UpdateRepositoryRequest{

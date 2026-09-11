@@ -15,10 +15,61 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/traP-jp/terraform-provider-neoshowcase/internal/neoshowcase"
+	"github.com/traP-jp/terraform-provider-neoshowcase/internal/neoshowcase/gen"
 	neoshowcaseprovider "github.com/traP-jp/terraform-provider-neoshowcase/internal/provider"
 )
+
+func TestAccRealRepositoryAdoptsExistingByURL(t *testing.T) {
+	environment := requireRealAcceptanceEnvironment(t)
+	owner := environment.runID + "-existing-owner"
+	t.Setenv("NEOSHOWCASE_SESSION_COOKIE", acceptanceSessionCookie(owner))
+	resourceName := "neoshowcase_repository.test"
+
+	client, err := neoshowcase.NewClient(neoshowcase.Options{
+		Endpoint:      environment.endpoint,
+		SessionCookie: acceptanceSessionCookie(owner),
+	})
+	if err != nil {
+		t.Fatalf("create NeoShowcase client: %v", err)
+	}
+	existing, err := client.CreateRepository(context.Background(), &gen.CreateRepositoryRequest{
+		Name: environment.runID + "-preexisting",
+		Url:  environment.publicURLOne,
+		Auth: &gen.CreateRepositoryAuth{Auth: &gen.CreateRepositoryAuth_None{None: &emptypb.Empty{}}},
+	})
+	if err != nil {
+		t.Fatalf("create preexisting repository: %v", err)
+	}
+	t.Cleanup(func() {
+		if _, err := client.GetRepository(context.Background(), existing.GetId()); neoshowcase.IsNotFound(err) {
+			return
+		} else if err != nil {
+			t.Errorf("get preexisting repository before cleanup: %v", err)
+			return
+		}
+		if err := client.DeleteRepository(context.Background(), existing.GetId()); err != nil {
+			t.Errorf("delete preexisting repository: %v", err)
+		}
+	})
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: realProviderFactories(),
+		CheckDestroy:             checkRealRepositoriesDestroyed(environment.endpoint, owner),
+		Steps: []resource.TestStep{{
+			Config: realPublicRepositoryConfig(environment.endpoint, owner, environment.additionalOwnerID, environment.publicURLOne, environment.runID+"-adopted", true),
+			Check: resource.ComposeAggregateTestCheckFunc(
+				resource.TestCheckResourceAttr(resourceName, "id", existing.GetId()),
+				resource.TestCheckResourceAttr(resourceName, "name", environment.runID+"-adopted"),
+				resource.TestCheckResourceAttr(resourceName, "url", environment.publicURLOne),
+				resource.TestCheckResourceAttr(resourceName, "additional_owner_ids.#", "1"),
+				resource.TestCheckResourceAttr(resourceName, "effective_owner_ids.#", "2"),
+			),
+		}},
+	})
+}
 
 func TestAccRealRepositoryLifecycle(t *testing.T) {
 	environment := requireRealAcceptanceEnvironment(t)

@@ -15,7 +15,7 @@ import (
 
 func resourceSchema() schema.Schema {
 	return schema.Schema{
-		MarkdownDescription: "Registers and manages a Git repository in NeoShowcase.",
+		MarkdownDescription: "Registers and manages a Git repository in NeoShowcase. If the provider user already owns a repository with the same URL, the existing repository is adopted and reconciled with the configured name, authentication, and owners.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:            true,

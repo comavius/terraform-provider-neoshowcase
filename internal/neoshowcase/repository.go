@@ -17,6 +17,21 @@ func (c *Client) CreateRepository(ctx context.Context, request *gen.CreateReposi
 	return response.Msg, nil
 }
 
+func (c *Client) GetOwnedRepositoryByURL(ctx context.Context, repositoryURL string) (*gen.Repository, error) {
+	response, err := c.rpc.GetRepositories(ctx, connect.NewRequest(&gen.GetRepositoriesRequest{
+		Scope: gen.GetRepositoriesRequest_MINE,
+	}))
+	if err != nil {
+		return nil, fmt.Errorf("list owned NeoShowcase repositories: %w", err)
+	}
+	for _, repository := range response.Msg.GetRepositories() {
+		if repository.GetUrl() == repositoryURL {
+			return repository, nil
+		}
+	}
+	return nil, nil
+}
+
 func (c *Client) GetRepository(ctx context.Context, repositoryID string) (*gen.Repository, error) {
 	response, err := c.rpc.GetRepository(ctx, connect.NewRequest(&gen.RepositoryIdRequest{RepositoryId: repositoryID}))
 	if err != nil {
