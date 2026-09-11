@@ -37,6 +37,7 @@ NeoShowcase authenticates API requests using a trusted reverse-proxy header. The
 The provider currently supports:
 
 - Resource: `neoshowcase_repository`
+- Resource: `neoshowcase_application` (including environment variables)
 - Data source: `neoshowcase_current_user`
 - Data source: `neoshowcase_system_info`
 
@@ -54,10 +55,18 @@ Repository passwords use Terraform 1.11 write-only attributes and are never stor
 
 Importing an existing BASIC repository requires supplying a password on the first change to its authentication settings because NeoShowcase does not return credentials.
 
+### Applications and environment variables
+
+`neoshowcase_application` manages build configuration, access URLs, port forwarding rules, owners, running state, and the complete set of user-defined environment variables. Environment variables are nested in the application rather than represented by separate resources.
+
+Environment variable values use the write-only `value_wo` attribute and are never stored in Terraform state. Increment `value_wo_version` to send a new value. Keys beginning with `NS_` are reserved for NeoShowcase and rejected by the provider. NeoShowcase-generated system environment variables are excluded from the managed map; their keys are exposed through `system_environment_variable_keys` without exposing their values.
+
+Terraform detects added and removed environment-variable keys. Because write-only values cannot be retained for comparison, a value changed outside Terraform cannot be detected; increment `value_wo_version` to explicitly reconcile a value.
+
+The repository ID and the `use_mariadb` and `use_mongodb` settings cannot be changed in place and therefore replace the application. The provider creates an application in the stopped state, configures its owners and environment variables, and only then starts it when `running = true`.
+
 ## Planned resources
 
-- `neoshowcase_application`
-- `neoshowcase_environment_variable`
 - `neoshowcase_user_key`
 
 The provider user will be treated as the authoritative owner of applications, as it is for repositories. Other owners will be managed separately through `additional_owner_ids`.

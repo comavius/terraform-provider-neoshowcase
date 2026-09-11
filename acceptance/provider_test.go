@@ -106,6 +106,57 @@ func TestAccRealRepositoryAuthentication(t *testing.T) {
 	})
 }
 
+func TestAccRealApplicationWithEnvironmentVariables(t *testing.T) {
+	environment := requireRealAcceptanceEnvironment(t)
+	owner := environment.runID + "-app-owner"
+	resourceName := "neoshowcase_application.test"
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: realProviderFactories(),
+		CheckDestroy:             checkRealRepositoriesDestroyed(environment.endpoint, owner),
+		Steps: []resource.TestStep{
+			{
+				Config: realApplicationConfig(environment, owner, environment.runID+"-app-one", "TOKEN", "first-value", 1, false),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "name", environment.runID+"-app-one"),
+					resource.TestCheckResourceAttr(resourceName, "ref_name", "main"),
+					resource.TestCheckResourceAttr(resourceName, "build.type", "static_buildpack"),
+					resource.TestCheckResourceAttr(resourceName, "build.artifact_path", "."),
+					resource.TestCheckResourceAttr(resourceName, "running", "false"),
+					resource.TestCheckResourceAttr(resourceName, "environment_variables.%", "1"),
+					resource.TestCheckResourceAttr(resourceName, "environment_variables.TOKEN.value_wo_version", "1"),
+					resource.TestCheckNoResourceAttr(resourceName, "environment_variables.TOKEN.value_wo"),
+					resource.TestCheckResourceAttr(resourceName, "effective_owner_ids.#", "1"),
+				),
+			},
+			{
+				Config: realApplicationConfig(environment, owner, environment.runID+"-app-two", "FEATURE_FLAG", "enabled", 2, true),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "name", environment.runID+"-app-two"),
+					resource.TestCheckResourceAttr(resourceName, "running", "true"),
+					resource.TestCheckResourceAttr(resourceName, "environment_variables.%", "1"),
+					resource.TestCheckResourceAttr(resourceName, "environment_variables.FEATURE_FLAG.value_wo_version", "2"),
+					resource.TestCheckNoResourceAttr(resourceName, "environment_variables.TOKEN"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"environment_variables",
+					"commit",
+					"container_state",
+					"container_message",
+					"current_build_id",
+					"latest_build_status",
+					"updated_at",
+				},
+			},
+		},
+	})
+}
+
 func TestAccRealRepositoryRejectsMissingGitRemote(t *testing.T) {
 	environment := requireRealAcceptanceEnvironment(t)
 	owner := environment.runID + "-negative-owner"
@@ -249,6 +300,40 @@ resource "neoshowcase_repository" "test" {
   additional_owner_ids = []
 }
 `, environment.endpoint, owner, environment.runID+"-private", environment.privateURL, username, password, passwordVersion)
+}
+
+func realApplicationConfig(environment realAcceptanceEnvironment, owner, name, environmentKey, environmentValue string, environmentVersion int, running bool) string {
+	return fmt.Sprintf(`
+provider "neoshowcase" {
+  endpoint = %q
+  user     = %q
+}
+
+resource "neoshowcase_repository" "test" {
+  name = %q
+  url  = %q
+  auth = { method = "none" }
+}
+
+resource "neoshowcase_application" "test" {
+  name          = %q
+  repository_id = neoshowcase_repository.test.id
+  ref_name      = "main"
+  running       = %t
+
+  build = {
+    type          = "static_buildpack"
+    artifact_path = "."
+  }
+
+  environment_variables = {
+    %s = {
+      value_wo         = %q
+      value_wo_version = %d
+    }
+  }
+}
+`, environment.endpoint, owner, environment.runID+"-app-repository", environment.publicURLOne, name, running, environmentKey, environmentValue, environmentVersion)
 }
 
 func realSSHRepositoryConfig(environment realAcceptanceEnvironment, owner string) string {

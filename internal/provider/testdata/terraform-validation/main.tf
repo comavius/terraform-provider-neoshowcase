@@ -40,6 +40,25 @@ resource "neoshowcase_repository" "private" {
   }
 }
 
+resource "neoshowcase_application" "static" {
+  name          = "static"
+  repository_id = neoshowcase_repository.public.id
+  ref_name      = "main"
+
+  build = {
+    type          = "static_buildpack"
+    artifact_path = "."
+    context       = ""
+  }
+
+  environment_variables = {
+    SITE_TITLE = {
+      value_wo         = "NeoShowcase"
+      value_wo_version = 1
+    }
+  }
+}
+
 variable "repository_password" {
   type      = string
   sensitive = true

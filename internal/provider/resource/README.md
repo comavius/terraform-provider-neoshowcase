@@ -5,8 +5,9 @@ Resources are added to the provider only after their full create, read, update, 
 Implementation status:
 
 1. `neoshowcase_repository` — implemented
-2. `neoshowcase_application` — planned
-3. `neoshowcase_environment_variable` — planned
-4. `neoshowcase_user_key` — planned
+2. `neoshowcase_application` — implemented, including user-defined environment variables
+3. `neoshowcase_user_key` — planned
 
 Repository and application resources must use the provider user as their authoritative owner. User-configured owners are stored separately as `additional_owner_ids`.
+
+Environment variables belong to `neoshowcase_application`; there is no separate environment-variable resource. The application manages the exact set of user-defined variables while NeoShowcase-generated system variables remain read-only. Keys beginning with the reserved `NS_` prefix are rejected.

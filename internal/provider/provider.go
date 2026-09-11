@@ -9,6 +9,7 @@ import (
 
 	currentuserdatasource "github.com/traP-jp/terraform-provider-neoshowcase/internal/provider/datasource/currentuser"
 	systeminfodatasource "github.com/traP-jp/terraform-provider-neoshowcase/internal/provider/datasource/systeminfo"
+	applicationresource "github.com/traP-jp/terraform-provider-neoshowcase/internal/provider/resource/application"
 	repositoryresource "github.com/traP-jp/terraform-provider-neoshowcase/internal/provider/resource/repository"
 )
 
@@ -34,6 +35,7 @@ func (p *neoShowcaseProvider) Metadata(_ context.Context, _ provider.MetadataReq
 func (p *neoShowcaseProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		repositoryresource.New,
+		applicationresource.New,
 	}
 }
 

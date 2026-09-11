@@ -15,8 +15,107 @@ import (
 
 type testAPIService struct {
 	genconnect.UnimplementedAPIServiceHandler
-	testing    *testing.T
-	repository *gen.Repository
+	testing              *testing.T
+	repository           *gen.Repository
+	application          *gen.Application
+	environmentVariables map[string]string
+}
+
+func (s *testAPIService) CreateApplication(_ context.Context, request *connect.Request[gen.CreateApplicationRequest]) (*connect.Response[gen.Application], error) {
+	s.testing.Helper()
+	s.application = &gen.Application{
+		Id: "application-id", Name: request.Msg.GetName(), RepositoryId: request.Msg.GetRepositoryId(),
+		RefName: request.Msg.GetRefName(), Config: request.Msg.GetConfig(), Websites: nil,
+		PortPublications: request.Msg.GetPortPublications(), Running: request.Msg.GetStartOnCreate(), OwnerIds: []string{"provider-user"},
+	}
+	s.environmentVariables = make(map[string]string)
+	return connect.NewResponse(s.application), nil
+}
+
+func (s *testAPIService) GetApplication(_ context.Context, request *connect.Request[gen.ApplicationIdRequest]) (*connect.Response[gen.Application], error) {
+	s.testing.Helper()
+	if s.application == nil || request.Msg.GetId() != s.application.GetId() {
+		return nil, connect.NewError(connect.CodeNotFound, nil)
+	}
+	return connect.NewResponse(s.application), nil
+}
+
+func (s *testAPIService) UpdateApplication(_ context.Context, request *connect.Request[gen.UpdateApplicationRequest]) (*connect.Response[emptypb.Empty], error) {
+	s.testing.Helper()
+	if s.application == nil || request.Msg.GetId() != s.application.GetId() {
+		return nil, connect.NewError(connect.CodeNotFound, nil)
+	}
+	if request.Msg.Name != nil {
+		s.application.Name = request.Msg.GetName()
+	}
+	if request.Msg.RefName != nil {
+		s.application.RefName = request.Msg.GetRefName()
+	}
+	if request.Msg.Config != nil {
+		s.application.Config = request.Msg.GetConfig()
+	}
+	if request.Msg.OwnerIds != nil {
+		s.application.OwnerIds = request.Msg.GetOwnerIds().GetOwnerIds()
+	}
+	return connect.NewResponse(&emptypb.Empty{}), nil
+}
+
+func (s *testAPIService) DeleteApplication(_ context.Context, request *connect.Request[gen.ApplicationIdRequest]) (*connect.Response[emptypb.Empty], error) {
+	s.testing.Helper()
+	if s.application == nil || request.Msg.GetId() != s.application.GetId() {
+		return nil, connect.NewError(connect.CodeNotFound, nil)
+	}
+	s.application = nil
+	s.environmentVariables = nil
+	return connect.NewResponse(&emptypb.Empty{}), nil
+}
+
+func (s *testAPIService) GetEnvVars(_ context.Context, request *connect.Request[gen.ApplicationIdRequest]) (*connect.Response[gen.ApplicationEnvVars], error) {
+	s.testing.Helper()
+	if s.application == nil || request.Msg.GetId() != s.application.GetId() {
+		return nil, connect.NewError(connect.CodeNotFound, nil)
+	}
+	variables := make([]*gen.ApplicationEnvVar, 0, len(s.environmentVariables))
+	for key, value := range s.environmentVariables {
+		variables = append(variables, &gen.ApplicationEnvVar{ApplicationId: s.application.GetId(), Key: key, Value: value})
+	}
+	return connect.NewResponse(&gen.ApplicationEnvVars{Variables: variables}), nil
+}
+
+func (s *testAPIService) SetEnvVar(_ context.Context, request *connect.Request[gen.SetApplicationEnvVarRequest]) (*connect.Response[emptypb.Empty], error) {
+	s.testing.Helper()
+	if s.application == nil || request.Msg.GetApplicationId() != s.application.GetId() {
+		return nil, connect.NewError(connect.CodeNotFound, nil)
+	}
+	s.environmentVariables[request.Msg.GetKey()] = request.Msg.GetValue()
+	return connect.NewResponse(&emptypb.Empty{}), nil
+}
+
+func (s *testAPIService) DeleteEnvVar(_ context.Context, request *connect.Request[gen.DeleteApplicationEnvVarRequest]) (*connect.Response[emptypb.Empty], error) {
+	s.testing.Helper()
+	if s.application == nil || request.Msg.GetApplicationId() != s.application.GetId() {
+		return nil, connect.NewError(connect.CodeNotFound, nil)
+	}
+	delete(s.environmentVariables, request.Msg.GetKey())
+	return connect.NewResponse(&emptypb.Empty{}), nil
+}
+
+func (s *testAPIService) StartApplication(_ context.Context, request *connect.Request[gen.ApplicationIdRequest]) (*connect.Response[emptypb.Empty], error) {
+	s.testing.Helper()
+	if s.application == nil || request.Msg.GetId() != s.application.GetId() {
+		return nil, connect.NewError(connect.CodeNotFound, nil)
+	}
+	s.application.Running = true
+	return connect.NewResponse(&emptypb.Empty{}), nil
+}
+
+func (s *testAPIService) StopApplication(_ context.Context, request *connect.Request[gen.ApplicationIdRequest]) (*connect.Response[emptypb.Empty], error) {
+	s.testing.Helper()
+	if s.application == nil || request.Msg.GetId() != s.application.GetId() {
+		return nil, connect.NewError(connect.CodeNotFound, nil)
+	}
+	s.application.Running = false
+	return connect.NewResponse(&emptypb.Empty{}), nil
 }
 
 func (s testAPIService) GetMe(_ context.Context, request *connect.Request[emptypb.Empty]) (*connect.Response[gen.User], error) {
@@ -165,6 +264,58 @@ func TestClientRepositoryLifecycle(t *testing.T) {
 	_, err = client.GetRepository(context.Background(), created.GetId())
 	if !IsNotFound(err) {
 		t.Fatalf("GetRepository() after deletion error = %v, want not found", err)
+	}
+}
+
+func TestClientApplicationLifecycle(t *testing.T) {
+	t.Parallel()
+
+	service := &testAPIService{testing: t}
+	path, handler := genconnect.NewAPIServiceHandler(service)
+	server := httptest.NewServer(withPath(path, handler))
+	t.Cleanup(server.Close)
+
+	client, err := NewClient(Options{Endpoint: server.URL, User: "terraform", HTTPClient: server.Client()})
+	if err != nil {
+		t.Fatalf("NewClient() error = %v", err)
+	}
+	created, err := client.CreateApplication(context.Background(), &gen.CreateApplicationRequest{
+		Name: "application", RepositoryId: "repository-id", RefName: "main",
+		Config: &gen.ApplicationConfig{BuildConfig: &gen.ApplicationConfig_StaticBuildpack{StaticBuildpack: &gen.BuildConfigStaticBuildpack{StaticConfig: &gen.StaticConfig{ArtifactPath: "."}}}},
+	})
+	if err != nil {
+		t.Fatalf("CreateApplication() error = %v", err)
+	}
+	name := "renamed"
+	if err := client.UpdateApplication(context.Background(), &gen.UpdateApplicationRequest{Id: created.GetId(), Name: &name}); err != nil {
+		t.Fatalf("UpdateApplication() error = %v", err)
+	}
+	if err := client.SetApplicationEnvironmentVariable(context.Background(), created.GetId(), "TOKEN", "secret"); err != nil {
+		t.Fatalf("SetApplicationEnvironmentVariable() error = %v", err)
+	}
+	variables, err := client.GetApplicationEnvironmentVariables(context.Background(), created.GetId())
+	if err != nil || len(variables) != 1 || variables[0].GetKey() != "TOKEN" {
+		t.Fatalf("GetApplicationEnvironmentVariables() = %#v, %v", variables, err)
+	}
+	if err := client.StartApplication(context.Background(), created.GetId()); err != nil {
+		t.Fatalf("StartApplication() error = %v", err)
+	}
+	application, err := client.GetApplication(context.Background(), created.GetId())
+	if err != nil || !application.GetRunning() || application.GetName() != name {
+		t.Fatalf("GetApplication() = %#v, %v", application, err)
+	}
+	if err := client.StopApplication(context.Background(), created.GetId()); err != nil {
+		t.Fatalf("StopApplication() error = %v", err)
+	}
+	if err := client.DeleteApplicationEnvironmentVariable(context.Background(), created.GetId(), "TOKEN"); err != nil {
+		t.Fatalf("DeleteApplicationEnvironmentVariable() error = %v", err)
+	}
+	if err := client.DeleteApplication(context.Background(), created.GetId()); err != nil {
+		t.Fatalf("DeleteApplication() error = %v", err)
+	}
+	_, err = client.GetApplication(context.Background(), created.GetId())
+	if !IsNotFound(err) {
+		t.Fatalf("GetApplication() after deletion error = %v, want not found", err)
 	}
 }
 
