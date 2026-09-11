@@ -3,10 +3,13 @@ set -euo pipefail
 
 readonly upstream_repository="https://raw.githubusercontent.com/traPtitech/NeoShowcase"
 readonly upstream_commit="${1:-16eda27a8cda8858811406411bcc7f2f508e9efc}"
-readonly script_directory="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-readonly repository_root="$(cd -- "${script_directory}/.." && pwd)"
+script_directory="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+readonly script_directory
+repository_root="$(cd -- "${script_directory}/.." && pwd)"
+readonly repository_root
 readonly destination="${repository_root}/proto/neoshowcase/protobuf"
-readonly temporary_directory="$(mktemp -d)"
+temporary_directory="$(mktemp -d)"
+readonly temporary_directory
 
 cleanup() {
   rm -rf -- "${temporary_directory}"

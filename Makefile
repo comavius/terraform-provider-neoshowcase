@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := test
 
-.PHONY: build fmt generate proto test tidy verify
+.PHONY: build fmt generate proto terraform-validate test test-acceptance tidy verify
 
 build:
 	go build ./...
@@ -16,6 +16,12 @@ generate: proto
 
 test:
 	go test ./...
+
+test-acceptance:
+	TF_ACC=1 go test -tags=acceptance -v ./internal/provider
+
+terraform-validate:
+	./scripts/terraform-validate.sh
 
 tidy:
 	go mod tidy
