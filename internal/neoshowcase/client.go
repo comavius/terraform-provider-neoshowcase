@@ -24,27 +24,13 @@ func NewClient(options Options) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	if strings.TrimSpace(options.User) == "" {
-		return nil, fmt.Errorf("user must not be empty")
+	sessionCookie := strings.TrimSpace(options.SessionCookie)
+	if sessionCookie == "" {
+		return nil, fmt.Errorf("session cookie must not be empty")
 	}
-
-	authHeader := strings.TrimSpace(options.AuthHeader)
-	if authHeader == "" {
-		authHeader = DefaultAuthHeader
+	if strings.ContainsAny(sessionCookie, "\r\n") {
+		return nil, fmt.Errorf("session cookie contains invalid characters")
 	}
-	if err := validateHeaderName(authHeader); err != nil {
-		return nil, fmt.Errorf("invalid auth header: %w", err)
-	}
-
-	headers := make(http.Header, len(options.AdditionalHeaders)+1)
-	for name, value := range options.AdditionalHeaders {
-		if err := validateHeaderName(name); err != nil {
-			return nil, fmt.Errorf("invalid additional header %q: %w", name, err)
-		}
-		headers.Set(name, value)
-	}
-	// The provider identity always wins over additional_headers.
-	headers.Set(authHeader, options.User)
 
 	httpClient := options.HTTPClient
 	if httpClient == nil {
@@ -59,9 +45,9 @@ func NewClient(options Options) (*Client, error) {
 	}
 
 	httpClient = cloneHTTPClient(httpClient)
-	httpClient.Transport = &headerRoundTripper{
-		base:    httpClient.Transport,
-		headers: headers,
+	httpClient.Transport = &sessionCookieRoundTripper{
+		base:          httpClient.Transport,
+		sessionCookie: sessionCookie,
 	}
 
 	return &Client{
@@ -109,16 +95,6 @@ func normalizeEndpoint(raw string) (string, error) {
 	return parsed.String(), nil
 }
 
-func validateHeaderName(name string) error {
-	if strings.TrimSpace(name) == "" {
-		return fmt.Errorf("name must not be empty")
-	}
-	if strings.ContainsAny(name, ":\r\n") {
-		return fmt.Errorf("name contains invalid characters")
-	}
-	return nil
-}
-
 func cloneHTTPClient(client *http.Client) *http.Client {
 	clone := *client
 	if clone.Transport == nil {
@@ -127,19 +103,14 @@ func cloneHTTPClient(client *http.Client) *http.Client {
 	return &clone
 }
 
-type headerRoundTripper struct {
-	base    http.RoundTripper
-	headers http.Header
+type sessionCookieRoundTripper struct {
+	base          http.RoundTripper
+	sessionCookie string
 }
 
-func (r *headerRoundTripper) RoundTrip(request *http.Request) (*http.Response, error) {
+func (r *sessionCookieRoundTripper) RoundTrip(request *http.Request) (*http.Response, error) {
 	request = request.Clone(request.Context())
 	request.Header = request.Header.Clone()
-	for name, values := range r.headers {
-		request.Header.Del(name)
-		for _, value := range values {
-			request.Header.Add(name, value)
-		}
-	}
+	request.Header.Set("Cookie", r.sessionCookie)
 	return r.base.RoundTrip(request)
 }

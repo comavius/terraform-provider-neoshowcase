@@ -10,9 +10,6 @@ import (
 
 type providerModel struct {
 	Endpoint           types.String `tfsdk:"endpoint"`
-	User               types.String `tfsdk:"user"`
-	AuthHeader         types.String `tfsdk:"auth_header"`
-	AdditionalHeaders  types.Map    `tfsdk:"additional_headers"`
 	InsecureSkipVerify types.Bool   `tfsdk:"insecure_skip_verify"`
 }
 
@@ -23,20 +20,6 @@ func (p *neoShowcaseProvider) Schema(_ context.Context, _ provider.SchemaRequest
 			"endpoint": schema.StringAttribute{
 				Optional:            true,
 				MarkdownDescription: "NeoShowcase Gateway base URL. May also be set with `NEOSHOWCASE_ENDPOINT` and defaults to `https://ns.trap.jp`.",
-			},
-			"user": schema.StringAttribute{
-				Optional:            true,
-				MarkdownDescription: "User name placed in the trusted proxy authentication header. May also be set with `NEOSHOWCASE_USER`.",
-			},
-			"auth_header": schema.StringAttribute{
-				Optional:            true,
-				MarkdownDescription: "Trusted proxy authentication header. Defaults to `X-Showcase-User` and may also be set with `NEOSHOWCASE_AUTH_HEADER`.",
-			},
-			"additional_headers": schema.MapAttribute{
-				Optional:            true,
-				Sensitive:           true,
-				ElementType:         types.StringType,
-				MarkdownDescription: "Additional HTTP headers sent with every API request.",
 			},
 			"insecure_skip_verify": schema.BoolAttribute{
 				Optional:            true,

@@ -23,6 +23,7 @@ import (
 func TestAccRealRepositoryLifecycle(t *testing.T) {
 	environment := requireRealAcceptanceEnvironment(t)
 	owner := environment.runID + "-owner"
+	t.Setenv("NEOSHOWCASE_SESSION_COOKIE", acceptanceSessionCookie(owner))
 	resourceName := "neoshowcase_repository.test"
 
 	resource.Test(t, resource.TestCase{
@@ -66,6 +67,7 @@ func TestAccRealRepositoryLifecycle(t *testing.T) {
 func TestAccRealRepositoryAuthentication(t *testing.T) {
 	environment := requireRealAcceptanceEnvironment(t)
 	owner := environment.runID + "-basic-owner"
+	t.Setenv("NEOSHOWCASE_SESSION_COOKIE", acceptanceSessionCookie(owner))
 	resourceName := "neoshowcase_repository.test"
 
 	resource.Test(t, resource.TestCase{
@@ -109,6 +111,7 @@ func TestAccRealRepositoryAuthentication(t *testing.T) {
 func TestAccRealApplicationWithEnvironmentVariables(t *testing.T) {
 	environment := requireRealAcceptanceEnvironment(t)
 	owner := environment.runID + "-app-owner"
+	t.Setenv("NEOSHOWCASE_SESSION_COOKIE", acceptanceSessionCookie(owner))
 	resourceName := "neoshowcase_application.test"
 
 	resource.Test(t, resource.TestCase{
@@ -160,6 +163,7 @@ func TestAccRealApplicationWithEnvironmentVariables(t *testing.T) {
 func TestAccRealRepositoryRejectsMissingGitRemote(t *testing.T) {
 	environment := requireRealAcceptanceEnvironment(t)
 	owner := environment.runID + "-negative-owner"
+	t.Setenv("NEOSHOWCASE_SESSION_COOKIE", acceptanceSessionCookie(owner))
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: realProviderFactories(),
@@ -235,7 +239,7 @@ func realProviderFactories() map[string]func() (tfprotov6.ProviderServer, error)
 
 func checkRealRepositoriesDestroyed(endpoint, user string) func(*terraform.State) error {
 	return func(state *terraform.State) error {
-		client, err := neoshowcase.NewClient(neoshowcase.Options{Endpoint: endpoint, User: user})
+		client, err := neoshowcase.NewClient(neoshowcase.Options{Endpoint: endpoint, SessionCookie: acceptanceSessionCookie(user)})
 		if err != nil {
 			return err
 		}
@@ -265,7 +269,6 @@ func realPublicRepositoryConfig(endpoint, owner, additionalOwnerID, repositoryUR
 	return fmt.Sprintf(`
 provider "neoshowcase" {
   endpoint = %q
-  user     = %q
 }
 
 data "neoshowcase_current_user" "owner" {}
@@ -278,14 +281,13 @@ resource "neoshowcase_repository" "test" {
   auth = { method = "none" }
   additional_owner_ids = %s
 }
-`, endpoint, owner, name, repositoryURL, additionalOwnerIDs)
+`, endpoint, name, repositoryURL, additionalOwnerIDs)
 }
 
 func realBasicRepositoryConfig(environment realAcceptanceEnvironment, owner, username, password string, passwordVersion int) string {
 	return fmt.Sprintf(`
 provider "neoshowcase" {
   endpoint = %q
-  user     = %q
 }
 
 resource "neoshowcase_repository" "test" {
@@ -299,14 +301,13 @@ resource "neoshowcase_repository" "test" {
   }
   additional_owner_ids = []
 }
-`, environment.endpoint, owner, environment.runID+"-private", environment.privateURL, username, password, passwordVersion)
+`, environment.endpoint, environment.runID+"-private", environment.privateURL, username, password, passwordVersion)
 }
 
 func realApplicationConfig(environment realAcceptanceEnvironment, owner, name, environmentKey, environmentValue string, environmentVersion int, running bool) string {
 	return fmt.Sprintf(`
 provider "neoshowcase" {
   endpoint = %q
-  user     = %q
 }
 
 resource "neoshowcase_repository" "test" {
@@ -333,14 +334,13 @@ resource "neoshowcase_application" "test" {
     }
   }
 }
-`, environment.endpoint, owner, environment.runID+"-app-repository", environment.publicURLOne, name, running, environmentKey, environmentValue, environmentVersion)
+`, environment.endpoint, environment.runID+"-app-repository", environment.publicURLOne, name, running, environmentKey, environmentValue, environmentVersion)
 }
 
 func realSSHRepositoryConfig(environment realAcceptanceEnvironment, owner string) string {
 	return fmt.Sprintf(`
 provider "neoshowcase" {
   endpoint = %q
-  user     = %q
 }
 
 resource "neoshowcase_repository" "test" {
@@ -349,14 +349,13 @@ resource "neoshowcase_repository" "test" {
   auth = { method = "ssh" }
   additional_owner_ids = []
 }
-`, environment.endpoint, owner, environment.runID+"-private-ssh", environment.privateSSHURL)
+`, environment.endpoint, environment.runID+"-private-ssh", environment.privateSSHURL)
 }
 
 func realMissingRepositoryConfig(endpoint, owner, runID string) string {
 	return fmt.Sprintf(`
 provider "neoshowcase" {
   endpoint = %q
-  user     = %q
 }
 
 resource "neoshowcase_repository" "test" {
@@ -365,5 +364,9 @@ resource "neoshowcase_repository" "test" {
   auth = { method = "none" }
   additional_owner_ids = []
 }
-`, endpoint, owner, runID+"-missing")
+`, endpoint, runID+"-missing")
+}
+
+func acceptanceSessionCookie(user string) string {
+	return "neoshowcase_test_session=" + user
 }

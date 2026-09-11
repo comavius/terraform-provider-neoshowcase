@@ -1,0 +1,5 @@
+:8080 {
+	reverse_proxy ns-gateway:8080 {
+		header_up X-Showcase-User {http.request.cookie.neoshowcase_test_session}
+	}
+}

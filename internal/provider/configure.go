@@ -23,15 +23,9 @@ func (p *neoShowcaseProvider) Configure(ctx context.Context, request provider.Co
 	if config.Endpoint.IsUnknown() {
 		response.Diagnostics.AddError("Unknown NeoShowcase endpoint", "The endpoint provider attribute must be known during provider configuration.")
 	}
-	user, ok := configuredString(config.User.ValueString(), os.Getenv("NEOSHOWCASE_USER"), "")
-	if !ok || config.User.IsUnknown() {
-		response.Diagnostics.AddError("Missing NeoShowcase user", "Set the user provider attribute or NEOSHOWCASE_USER environment variable.")
-	}
-	authHeader, _ := configuredString(config.AuthHeader.ValueString(), os.Getenv("NEOSHOWCASE_AUTH_HEADER"), neoshowcase.DefaultAuthHeader)
-
-	additionalHeaders := make(map[string]string)
-	if !config.AdditionalHeaders.IsNull() && !config.AdditionalHeaders.IsUnknown() {
-		response.Diagnostics.Append(config.AdditionalHeaders.ElementsAs(ctx, &additionalHeaders, false)...)
+	sessionCookie := strings.TrimSpace(os.Getenv("NEOSHOWCASE_SESSION_COOKIE"))
+	if sessionCookie == "" {
+		response.Diagnostics.AddError("Missing NeoShowcase session cookie", "Set the NEOSHOWCASE_SESSION_COOKIE environment variable.")
 	}
 	if response.Diagnostics.HasError() {
 		return
@@ -39,9 +33,7 @@ func (p *neoShowcaseProvider) Configure(ctx context.Context, request provider.Co
 
 	client, err := neoshowcase.NewClient(neoshowcase.Options{
 		Endpoint:           endpoint,
-		User:               user,
-		AuthHeader:         authHeader,
-		AdditionalHeaders:  additionalHeaders,
+		SessionCookie:      sessionCookie,
 		InsecureSkipVerify: config.InsecureSkipVerify.ValueBool(),
 	})
 	if err != nil {

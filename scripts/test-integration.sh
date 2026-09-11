@@ -21,6 +21,7 @@ readonly compose_project
 export COMPOSE_PROJECT_NAME="${compose_project}"
 export COMPOSE_PROGRESS="${COMPOSE_PROGRESS:-plain}"
 export NEOSHOWCASE_TEST_CERTS="${certificates_directory}"
+export NEOSHOWCASE_TEST_CADDYFILE="${repository_root}/acceptance/Caddyfile"
 
 compose_started=false
 compose=(
@@ -87,11 +88,11 @@ sed -i "s/network: neoshowcase_apps/network: ${compose_project}_apps/" \
 
 "${compose[@]}" config --quiet
 compose_started=true
-"${compose[@]}" up --detach --build --wait gitea ns-controller ns-gateway
+"${compose[@]}" up --detach --build --wait gitea ns-controller ns-gateway session-proxy
 
 gitea_binding="$("${compose[@]}" port gitea 3000)"
 gitea_ssh_binding="$("${compose[@]}" port gitea 2222)"
-gateway_binding="$("${compose[@]}" port ns-gateway 8080)"
+gateway_binding="$("${compose[@]}" port session-proxy 8080)"
 readonly gitea_binding gitea_ssh_binding gateway_binding
 gitea_endpoint="https://${gitea_binding}"
 gateway_endpoint="http://${gateway_binding}"
@@ -163,7 +164,7 @@ gitea_api --request PUT --data '{"permission":"read"}' \
 for _ in $(seq 1 60); do
   if curl --fail --silent --show-error \
     --header 'Content-Type: application/json' \
-    --header 'X-Showcase-User: integration-readiness' \
+    --header 'Cookie: neoshowcase_test_session=integration-readiness' \
     --data '{}' \
     "${gateway_endpoint}/neoshowcase.protobuf.APIService/GetMe" >/dev/null; then
     break
@@ -172,14 +173,14 @@ for _ in $(seq 1 60); do
 done
 curl --fail-with-body --silent --show-error \
   --header 'Content-Type: application/json' \
-  --header 'X-Showcase-User: integration-readiness' \
+  --header 'Cookie: neoshowcase_test_session=integration-readiness' \
   --data '{}' \
   "${gateway_endpoint}/neoshowcase.protobuf.APIService/GetSystemInfo" >/dev/null
 
 additional_owner_id="$(
   curl --fail-with-body --silent --show-error \
     --header 'Content-Type: application/json' \
-    --header "X-Showcase-User: ${compose_project}-additional-owner" \
+    --header "Cookie: neoshowcase_test_session=${compose_project}-additional-owner" \
     --data '{}' \
     "${gateway_endpoint}/neoshowcase.protobuf.APIService/GetMe" | jq --exit-status --raw-output '.id'
 )"

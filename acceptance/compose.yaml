@@ -2,11 +2,21 @@ services:
   ns-gateway:
     environment:
       SSL_CERT_FILE: /test-certs/gitea.crt
-    ports:
-      - "127.0.0.1::8080"
+    ports: !override []
     volumes:
       - "${NEOSHOWCASE_TEST_CERTS}:/test-certs:ro"
       - "${NEOSHOWCASE_TEST_CERTS}/known_hosts:/root/.ssh/known_hosts:ro"
+
+  session-proxy:
+    image: caddy:2.10.2-alpine
+    restart: unless-stopped
+    depends_on:
+      ns-gateway:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1::8080"
+    volumes:
+      - "${NEOSHOWCASE_TEST_CADDYFILE}:/etc/caddy/Caddyfile:ro"
 
   ns-controller:
     environment:

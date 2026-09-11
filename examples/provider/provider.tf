@@ -10,5 +10,4 @@ terraform {
 
 provider "neoshowcase" {
   endpoint = "https://showcase.example.com"
-  user     = "terraform"
 }

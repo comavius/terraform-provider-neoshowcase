@@ -3,7 +3,7 @@
 ## Requirements
 
 - Terraform 1.11 or later
-- A NeoShowcase endpoint that accepts authentication from a trusted reverse-proxy header
+- An authenticated NeoShowcase browser session
 
 ## Provider configuration
 
@@ -20,19 +20,17 @@ terraform {
 
 provider "neoshowcase" {
   endpoint = "https://showcase.example.com"
-  user     = "terraform"
 }
 ```
 
 The following environment variables can be used instead of provider attributes:
 
 - `NEOSHOWCASE_ENDPOINT`
-- `NEOSHOWCASE_USER`
-- `NEOSHOWCASE_AUTH_HEADER`
+- `NEOSHOWCASE_SESSION_COOKIE`
 
 When neither the provider attribute nor `NEOSHOWCASE_ENDPOINT` is set, the endpoint defaults to `https://ns.trap.jp`.
 
-NeoShowcase authenticates API requests using a trusted reverse-proxy header. The default header is `X-Showcase-User`.
+`NEOSHOWCASE_SESSION_COOKIE` is required. Copy the complete value of the `Cookie` request header from an authenticated NeoShowcase browser session; omit the `Cookie:` prefix and attributes from a `Set-Cookie` response header.
 
 ## Supported resources and data sources
 
@@ -47,9 +45,9 @@ Configuration examples are available under [`examples`](../examples).
 
 ### Repository ownership
 
-The user resolved by the provider's `user` setting is always included as the authoritative repository owner. `additional_owner_ids` is the exact set of other owners managed by Terraform; do not include the provider user in it.
+The user resolved from the authenticated session is always included as the authoritative repository owner. `additional_owner_ids` is the exact set of other owners managed by Terraform; do not include the authenticated user in it.
 
-When changing the provider user, first grant the new user ownership outside this provider or include it as an additional owner in a preceding apply. The first refresh under the new identity intentionally fails if that user is not already an owner, preventing Terraform from locking itself out.
+When changing the authenticated user, first grant the new user ownership outside this provider or include it as an additional owner in a preceding apply. The first refresh under the new identity intentionally fails if that user is not already an owner, preventing Terraform from locking itself out.
 
 ### Repository passwords
 
@@ -73,4 +71,4 @@ When a create or update requires a new build for a running application, the prov
 
 - `neoshowcase_user_key`
 
-The provider user will be treated as the authoritative owner of applications, as it is for repositories. Other owners will be managed separately through `additional_owner_ids`.
+The authenticated user is treated as the authoritative owner of applications, as it is for repositories. Other owners are managed separately through `additional_owner_ids`.

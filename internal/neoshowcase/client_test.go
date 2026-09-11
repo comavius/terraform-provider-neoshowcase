@@ -13,6 +13,8 @@ import (
 	"github.com/traP-jp/terraform-provider-neoshowcase/internal/neoshowcase/gen/genconnect"
 )
 
+const testSessionCookie = "neoshowcase_session=session-value; other_cookie=other-value"
+
 type testAPIService struct {
 	genconnect.UnimplementedAPIServiceHandler
 	testing              *testing.T
@@ -140,11 +142,8 @@ func (s *testAPIService) StopApplication(_ context.Context, request *connect.Req
 
 func (s testAPIService) GetMe(_ context.Context, request *connect.Request[emptypb.Empty]) (*connect.Response[gen.User], error) {
 	s.testing.Helper()
-	if got, want := request.Header().Get(DefaultAuthHeader), "terraform"; got != want {
-		s.testing.Errorf("auth header = %q, want %q", got, want)
-	}
-	if got, want := request.Header().Get("X-Test-Header"), "test-value"; got != want {
-		s.testing.Errorf("additional header = %q, want %q", got, want)
+	if got, want := request.Header().Get("Cookie"), testSessionCookie; got != want {
+		s.testing.Errorf("Cookie header = %q, want %q", got, want)
 	}
 	return connect.NewResponse(&gen.User{Id: "user-id", Name: "terraform"}), nil
 }
@@ -207,12 +206,9 @@ func TestClientGetMe(t *testing.T) {
 	t.Cleanup(mux.Close)
 
 	client, err := NewClient(Options{
-		Endpoint: mux.URL + "/",
-		User:     "terraform",
-		AdditionalHeaders: map[string]string{
-			"X-Test-Header": "test-value",
-		},
-		HTTPClient: mux.Client(),
+		Endpoint:      mux.URL + "/",
+		SessionCookie: testSessionCookie,
+		HTTPClient:    mux.Client(),
 	})
 	if err != nil {
 		t.Fatalf("NewClient() error = %v", err)
@@ -227,6 +223,27 @@ func TestClientGetMe(t *testing.T) {
 	}
 }
 
+func TestNewClientRequiresSessionCookie(t *testing.T) {
+	t.Parallel()
+
+	_, err := NewClient(Options{Endpoint: "https://ns.trap.jp"})
+	if err == nil {
+		t.Fatal("NewClient() error = nil, want missing session cookie error")
+	}
+}
+
+func TestNewClientRejectsSessionCookieWithNewline(t *testing.T) {
+	t.Parallel()
+
+	_, err := NewClient(Options{
+		Endpoint:      "https://ns.trap.jp",
+		SessionCookie: "session=value\r\nX-Showcase-User: attacker",
+	})
+	if err == nil {
+		t.Fatal("NewClient() error = nil, want invalid session cookie error")
+	}
+}
+
 func TestClientRepositoryLifecycle(t *testing.T) {
 	t.Parallel()
 
@@ -236,9 +253,9 @@ func TestClientRepositoryLifecycle(t *testing.T) {
 	t.Cleanup(server.Close)
 
 	client, err := NewClient(Options{
-		Endpoint:   server.URL,
-		User:       "terraform",
-		HTTPClient: server.Client(),
+		Endpoint:      server.URL,
+		SessionCookie: testSessionCookie,
+		HTTPClient:    server.Client(),
 	})
 	if err != nil {
 		t.Fatalf("NewClient() error = %v", err)
@@ -295,7 +312,7 @@ func TestClientApplicationLifecycle(t *testing.T) {
 	server := httptest.NewServer(withPath(path, handler))
 	t.Cleanup(server.Close)
 
-	client, err := NewClient(Options{Endpoint: server.URL, User: "terraform", HTTPClient: server.Client()})
+	client, err := NewClient(Options{Endpoint: server.URL, SessionCookie: testSessionCookie, HTTPClient: server.Client()})
 	if err != nil {
 		t.Fatalf("NewClient() error = %v", err)
 	}
