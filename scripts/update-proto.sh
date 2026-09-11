@@ -26,4 +26,4 @@ install -m 0644 "${temporary_directory}/gateway.proto" "${destination}/gateway.p
 install -m 0644 "${temporary_directory}/null.proto" "${destination}/null.proto"
 
 printf 'Updated protobuf sources to NeoShowcase commit %s.\n' "${upstream_commit}"
-printf 'Update proto/UPSTREAM.md, then run make proto.\n'
+printf 'Update proto/UPSTREAM.md, then run nix run .#proto.\n'

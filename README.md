@@ -46,30 +46,46 @@ The reproducible development environment uses Nix flakes:
 
 ```console
 nix develop
-go test ./...
 ```
 
-The shell includes Go, Terraform, Buf, Protobuf, `gopls`, `golangci-lint`, and
-`terraform-ls`. The flake can also build and check the provider directly:
+Individual tasks do not require entering the shell:
+
+```console
+nix run .#test
+```
+
+The shell includes Go, Terraform, Buf, Protobuf, `gopls`, `golangci-lint`,
+ShellCheck, and `terraform-ls`. The flake can also build and check the provider
+directly:
 
 ```console
 nix build
 nix flake check
-nix fmt flake.nix
-make terraform-validate
-make test-acceptance
+nix run .#fmt
+nix run .#lint
+nix run .#terraform-validate
+nix run .#test-acceptance
 ```
 
 `terraform-validate` loads the locally built provider through a development
 override. `test-acceptance` runs a complete repository lifecycle against an
 in-memory NeoShowcase API, so neither command requires a NeoShowcase instance.
 
-Without Nix, the core Go tasks remain available through Make:
+All development tasks are exposed as flake apps:
 
 ```console
-make proto
-make test
-make build
+nix run .#build
+nix run .#fmt
+nix run .#proto
+nix run .#generate
+nix run .#test
+nix run .#test-acceptance
+nix run .#terraform-validate
+nix run .#tidy
+nix run .#lint
+nix run .#check-generated
+nix run .#update-proto -- <upstream-commit>
+nix run .#verify
 ```
 
 The protobuf API schema is pinned to the upstream revision documented in
