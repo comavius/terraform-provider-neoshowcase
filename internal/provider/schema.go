@@ -22,7 +22,7 @@ func (p *neoShowcaseProvider) Schema(_ context.Context, _ provider.SchemaRequest
 		Attributes: map[string]schema.Attribute{
 			"endpoint": schema.StringAttribute{
 				Optional:            true,
-				MarkdownDescription: "NeoShowcase Gateway base URL. May also be set with `NEOSHOWCASE_ENDPOINT`.",
+				MarkdownDescription: "NeoShowcase Gateway base URL. May also be set with `NEOSHOWCASE_ENDPOINT` and defaults to `https://ns.trap.jp`.",
 			},
 			"user": schema.StringAttribute{
 				Optional:            true,

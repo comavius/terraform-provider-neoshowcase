@@ -30,6 +30,8 @@ The following environment variables can be used instead of provider attributes:
 - `NEOSHOWCASE_USER`
 - `NEOSHOWCASE_AUTH_HEADER`
 
+When neither the provider attribute nor `NEOSHOWCASE_ENDPOINT` is set, the endpoint defaults to `https://ns.trap.jp`.
+
 NeoShowcase authenticates API requests using a trusted reverse-proxy header. The default header is `X-Showcase-User`.
 
 ## Supported resources and data sources

@@ -10,6 +10,8 @@ import (
 	"github.com/traP-jp/terraform-provider-neoshowcase/internal/neoshowcase"
 )
 
+const defaultEndpoint = "https://ns.trap.jp"
+
 func (p *neoShowcaseProvider) Configure(ctx context.Context, request provider.ConfigureRequest, response *provider.ConfigureResponse) {
 	var config providerModel
 	response.Diagnostics.Append(request.Config.Get(ctx, &config)...)
@@ -17,9 +19,9 @@ func (p *neoShowcaseProvider) Configure(ctx context.Context, request provider.Co
 		return
 	}
 
-	endpoint, ok := configuredString(config.Endpoint.ValueString(), os.Getenv("NEOSHOWCASE_ENDPOINT"), "")
-	if !ok || config.Endpoint.IsUnknown() {
-		response.Diagnostics.AddError("Missing NeoShowcase endpoint", "Set the endpoint provider attribute or NEOSHOWCASE_ENDPOINT environment variable.")
+	endpoint, _ := configuredString(config.Endpoint.ValueString(), os.Getenv("NEOSHOWCASE_ENDPOINT"), defaultEndpoint)
+	if config.Endpoint.IsUnknown() {
+		response.Diagnostics.AddError("Unknown NeoShowcase endpoint", "The endpoint provider attribute must be known during provider configuration.")
 	}
 	user, ok := configuredString(config.User.ValueString(), os.Getenv("NEOSHOWCASE_USER"), "")
 	if !ok || config.User.IsUnknown() {
