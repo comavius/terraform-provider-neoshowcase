@@ -108,7 +108,7 @@ func TestAccRealRepositoryAuthentication(t *testing.T) {
 	})
 }
 
-func TestAccRealApplicationWithEnvironmentVariables(t *testing.T) {
+func TestAccRealStoppedApplicationWithEnvironmentVariables(t *testing.T) {
 	environment := requireRealAcceptanceEnvironment(t)
 	owner := environment.runID + "-app-owner"
 	t.Setenv("NEOSHOWCASE_SESSION_COOKIE", acceptanceSessionCookie(owner))
@@ -133,10 +133,10 @@ func TestAccRealApplicationWithEnvironmentVariables(t *testing.T) {
 				),
 			},
 			{
-				Config: realApplicationConfig(environment, owner, environment.runID+"-app-two", "FEATURE_FLAG", "enabled", 2, true),
+				Config: realApplicationConfig(environment, owner, environment.runID+"-app-two", "FEATURE_FLAG", "enabled", 2, false),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "name", environment.runID+"-app-two"),
-					resource.TestCheckResourceAttr(resourceName, "running", "true"),
+					resource.TestCheckResourceAttr(resourceName, "running", "false"),
 					resource.TestCheckResourceAttr(resourceName, "environment_variables.%", "1"),
 					resource.TestCheckResourceAttr(resourceName, "environment_variables.FEATURE_FLAG.value_wo_version", "2"),
 					resource.TestCheckNoResourceAttr(resourceName, "environment_variables.TOKEN"),
