@@ -1,6 +1,6 @@
 module github.com/traP-jp/terraform-provider-neoshowcase
 
-go 1.25.8
+go 1.25.14
 
 require (
 	connectrpc.com/connect v1.21.0
