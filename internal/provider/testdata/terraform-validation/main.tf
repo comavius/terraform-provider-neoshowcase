@@ -3,7 +3,7 @@ terraform {
 
   required_providers {
     neoshowcase = {
-      source = "traP-jp/neoshowcase"
+      source = "comavius/neoshowcase"
     }
   }
 }

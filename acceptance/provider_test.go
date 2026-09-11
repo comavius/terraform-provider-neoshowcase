@@ -141,7 +141,7 @@ func requireRealAcceptanceEnvironment(t *testing.T) realAcceptanceEnvironment {
 	if os.Getenv("NEOSHOWCASE_ACC") != "1" {
 		t.Skip("set NEOSHOWCASE_ACC=1 and start the real NeoShowcase integration environment")
 	}
-	t.Setenv("TF_ACC_PROVIDER_NAMESPACE", "trap-jp")
+	t.Setenv("TF_ACC_PROVIDER_NAMESPACE", "comavius")
 
 	environment := realAcceptanceEnvironment{
 		endpoint:          os.Getenv("NEOSHOWCASE_TEST_ENDPOINT"),

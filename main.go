@@ -18,7 +18,7 @@ func main() {
 	flag.Parse()
 
 	err := providerserver.Serve(context.Background(), provider.New(version), providerserver.ServeOpts{
-		Address: "registry.terraform.io/traP-jp/neoshowcase",
+		Address: "registry.terraform.io/comavius/neoshowcase",
 		Debug:   debug,
 	})
 	if err != nil {
