@@ -64,12 +64,10 @@ nix flake check
 nix run .#fmt
 nix run .#lint
 nix run .#terraform-validate
-nix run .#test-acceptance
 ```
 
 `terraform-validate` loads the locally built provider through a development
-override. `test-acceptance` runs a complete repository lifecycle against an
-in-memory NeoShowcase API, so neither command requires a NeoShowcase instance.
+override and does not require a NeoShowcase instance.
 
 All development tasks are exposed as flake apps:
 
@@ -79,7 +77,6 @@ nix run .#fmt
 nix run .#proto
 nix run .#generate
 nix run .#test
-nix run .#test-acceptance
 nix run .#terraform-validate
 nix run .#tidy
 nix run .#lint

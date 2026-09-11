@@ -57,9 +57,6 @@
               proto = ./nix/apps/proto.nix;
             } "Run all code generation";
             test = mkApp ./nix/apps/test.nix { } "Run unit tests";
-            test-acceptance =
-              mkApp ./nix/apps/test-acceptance.nix { }
-                "Run acceptance tests against the in-memory API";
             terraform-validate =
               mkApp ./nix/apps/terraform-validate.nix { }
                 "Validate Terraform fixtures with the development provider";
