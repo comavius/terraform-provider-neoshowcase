@@ -19,6 +19,7 @@ type testAPIService struct {
 	repository           *gen.Repository
 	application          *gen.Application
 	environmentVariables map[string]string
+	builds               []*gen.Build
 }
 
 func (s *testAPIService) CreateApplication(_ context.Context, request *connect.Request[gen.CreateApplicationRequest]) (*connect.Response[gen.Application], error) {
@@ -67,7 +68,26 @@ func (s *testAPIService) DeleteApplication(_ context.Context, request *connect.R
 	}
 	s.application = nil
 	s.environmentVariables = nil
+	s.builds = nil
 	return connect.NewResponse(&emptypb.Empty{}), nil
+}
+
+func (s *testAPIService) GetBuilds(_ context.Context, request *connect.Request[gen.ApplicationIdRequest]) (*connect.Response[gen.GetBuildsResponse], error) {
+	s.testing.Helper()
+	if s.application == nil || request.Msg.GetId() != s.application.GetId() {
+		return nil, connect.NewError(connect.CodeNotFound, nil)
+	}
+	return connect.NewResponse(&gen.GetBuildsResponse{Builds: s.builds}), nil
+}
+
+func (s *testAPIService) GetBuild(_ context.Context, request *connect.Request[gen.BuildIdRequest]) (*connect.Response[gen.Build], error) {
+	s.testing.Helper()
+	for _, build := range s.builds {
+		if build.GetId() == request.Msg.GetBuildId() {
+			return connect.NewResponse(build), nil
+		}
+	}
+	return nil, connect.NewError(connect.CodeNotFound, nil)
 }
 
 func (s *testAPIService) GetEnvVars(_ context.Context, request *connect.Request[gen.ApplicationIdRequest]) (*connect.Response[gen.ApplicationEnvVars], error) {
@@ -303,6 +323,15 @@ func TestClientApplicationLifecycle(t *testing.T) {
 	application, err := client.GetApplication(context.Background(), created.GetId())
 	if err != nil || !application.GetRunning() || application.GetName() != name {
 		t.Fatalf("GetApplication() = %#v, %v", application, err)
+	}
+	service.builds = []*gen.Build{{Id: "build-id", ApplicationId: created.GetId(), Status: gen.BuildStatus_SUCCEEDED}}
+	builds, err := client.GetApplicationBuilds(context.Background(), created.GetId())
+	if err != nil || len(builds) != 1 || builds[0].GetId() != "build-id" {
+		t.Fatalf("GetApplicationBuilds() = %#v, %v", builds, err)
+	}
+	build, err := client.GetBuild(context.Background(), builds[0].GetId())
+	if err != nil || build.GetStatus() != gen.BuildStatus_SUCCEEDED {
+		t.Fatalf("GetBuild() = %#v, %v", build, err)
 	}
 	if err := client.StopApplication(context.Background(), created.GetId()); err != nil {
 		t.Fatalf("StopApplication() error = %v", err)

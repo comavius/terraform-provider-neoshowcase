@@ -83,6 +83,11 @@ func (r *applicationResource) Create(ctx context.Context, request resource.Creat
 	if response.Diagnostics.HasError() {
 		return
 	}
+	if plan.Running.ValueBool() {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, applicationOperationTimeout)
+		defer cancel()
+	}
 
 	build, diagnostics := plan.build(ctx)
 	response.Diagnostics.Append(diagnostics...)
@@ -147,8 +152,17 @@ func (r *applicationResource) Create(ctx context.Context, request resource.Creat
 		return
 	}
 	if plan.Running.ValueBool() {
+		excludedBuildIDs, err := snapshotBuildIDs(ctx, r.session.Client, created.GetId())
+		if err != nil {
+			response.Diagnostics.AddError("Application created but builds could not be listed", err.Error())
+			return
+		}
 		if err := r.session.Client.StartApplication(ctx, created.GetId()); err != nil {
 			response.Diagnostics.AddError("Application created but could not be started", err.Error())
+			return
+		}
+		if _, err := waitForNewBuild(ctx, r.session.Client, created.GetId(), "", excludedBuildIDs); err != nil {
+			response.Diagnostics.AddError("Application created but its build did not succeed", err.Error())
 			return
 		}
 	}
@@ -269,6 +283,22 @@ func (r *applicationResource) Update(ctx context.Context, request resource.Updat
 	if response.Diagnostics.HasError() {
 		return
 	}
+	environmentVariablesChanged := environmentVariablesDiffer(planVariables, stateVariables)
+	buildInputsChanged := !plan.RefName.Equal(state.RefName) || !plan.Build.Equal(state.Build) || environmentVariablesChanged
+	shouldWaitForBuild := plan.Running.ValueBool() && (buildInputsChanged || (!state.Running.ValueBool() && state.CurrentBuildID.ValueString() == ""))
+	var excludedBuildIDs map[string]struct{}
+	if shouldWaitForBuild {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, applicationOperationTimeout)
+		defer cancel()
+
+		var err error
+		excludedBuildIDs, err = snapshotBuildIDs(ctx, r.session.Client, state.ID.ValueString())
+		if err != nil {
+			response.Diagnostics.AddError("Unable to list NeoShowcase application builds before update", err.Error())
+			return
+		}
+	}
 
 	// Reconcile environment variables before updating the application. An
 	// application update schedules an asynchronous repository fetch and build;
@@ -277,6 +307,11 @@ func (r *applicationResource) Update(ctx context.Context, request resource.Updat
 	r.reconcileEnvironmentVariables(ctx, state.ID.ValueString(), planVariables, configVariables, stateVariables, &response.Diagnostics)
 	if response.Diagnostics.HasError() {
 		return
+	}
+	// An otherwise empty update is intentional: NeoShowcase uses it to fetch
+	// the repository and schedule a build with the new environment hash.
+	if environmentVariablesChanged {
+		changed = true
 	}
 
 	if changed {
@@ -295,6 +330,12 @@ func (r *applicationResource) Update(ctx context.Context, request resource.Updat
 		}
 		if err != nil {
 			response.Diagnostics.AddError("Unable to change NeoShowcase application running state", err.Error())
+			return
+		}
+	}
+	if shouldWaitForBuild {
+		if _, err := waitForNewBuild(ctx, r.session.Client, state.ID.ValueString(), "", excludedBuildIDs); err != nil {
+			response.Diagnostics.AddError("NeoShowcase application build did not succeed", err.Error())
 			return
 		}
 	}
@@ -392,4 +433,17 @@ func (r *applicationResource) readAfterWrite(ctx context.Context, applicationID 
 
 func (r *applicationResource) configured() bool {
 	return r.session != nil && r.session.Client != nil && r.session.CurrentUser != nil
+}
+
+func environmentVariablesDiffer(desired, prior map[string]environmentVariableModel) bool {
+	if len(desired) != len(prior) {
+		return true
+	}
+	for key, desiredVariable := range desired {
+		priorVariable, ok := prior[key]
+		if !ok || !desiredVariable.Version.Equal(priorVariable.Version) {
+			return true
+		}
+	}
+	return false
 }

@@ -65,6 +65,8 @@ Terraform detects added and removed environment-variable keys. Because write-onl
 
 The repository ID and the `use_mariadb` and `use_mongodb` settings cannot be changed in place and therefore replace the application. The provider creates an application in the stopped state, configures its owners and environment variables, and only then starts it when `running = true`.
 
+When a create or update requires a new build for a running application, the provider waits up to 10 minutes for that build. It checks immediately and then every 11 seconds, matching `neoshowcase-cli`; only a `SUCCEEDED` build completes the Terraform operation successfully.
+
 ## Planned resources
 
 - `neoshowcase_user_key`
