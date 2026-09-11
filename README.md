@@ -2,7 +2,8 @@
 
 Terraform provider for [NeoShowcase](https://github.com/traPtitech/NeoShowcase).
 
-This provider is under active development. It currently manages NeoShowcase repositories and exposes the current-user and system-information data sources.
+> [!IMPORTANT]
+> This is a community-driven project. Please do not report issues with this Terraform provider to the NeoShowcase team.
 
 ## Documentation
 
