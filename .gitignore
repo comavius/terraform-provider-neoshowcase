@@ -6,6 +6,7 @@ terraform.tfvars
 
 # Go
 /terraform-provider-neoshowcase
+/dist/
 coverage.out
 
 # Editors and operating systems

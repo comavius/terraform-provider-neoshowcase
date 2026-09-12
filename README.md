@@ -7,6 +7,7 @@ Terraform provider for [NeoShowcase](https://github.com/traPtitech/NeoShowcase).
 
 ## Documentation
 
+- [Provider documentation](https://registry.terraform.io/providers/comavius/neoshowcase/latest/docs)
 - [Quick start](docs/quickstart.md)
 - [Development](docs/development.md)
 
